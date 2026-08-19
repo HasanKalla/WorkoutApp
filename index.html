@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lift">
+<meta name="theme-color" content="#16191D">
+<title>Lift</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png" type="image/png">
+<style>
+:root{
+  --ground:#16191D; --plate:#1E2329; --raise:#252B32; --edge:#2C333B;
+  --chalk:#F2EFE9; --muted:#7C8794; --load:#E4B363; --done:#6FA287; --warn:#C9736A;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ground); color:var(--chalk);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+  font-size:16px; line-height:1.45;
+  padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 96px);
+  max-width:640px; margin:0 auto; -webkit-font-smoothing:antialiased;
+}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px}
+h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:2px 0 0}
+.tabs{display:flex;gap:4px}
+.tab{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;font-weight:600;
+  padding:7px 11px;border-radius:8px}
+.tab[aria-selected="true"]{background:var(--raise);color:var(--chalk)}
+
+.card{background:var(--plate);border:1px solid var(--edge);border-radius:14px;padding:16px;margin-bottom:12px}
+.card.lead{border-color:#3A424C}
+
+.bigday{font-size:56px;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--load);margin:6px 0 2px}
+.daysub{color:var(--muted);font-size:14px;margin-bottom:18px}
+
+button.act{width:100%;border:0;border-radius:11px;padding:16px;font:inherit;font-size:16px;
+  font-weight:650;background:var(--load);color:#1A1408;letter-spacing:-.01em}
+button.act.ghost{background:transparent;border:1px solid var(--edge);color:var(--chalk);font-weight:600}
+button.act:active{opacity:.75}
+.row2{display:flex;gap:9px;margin-top:9px}
+
+/* exercise */
+.ex{background:var(--plate);border:1px solid var(--edge);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.ex.open{border-color:#3A424C}
+.ex.complete .exname{color:var(--done)}
+.exhead{display:flex;align-items:center;gap:12px;padding:15px 16px;cursor:pointer}
+.exidx{font-size:12px;font-weight:700;color:var(--muted);min-width:15px}
+.exname{font-size:16px;font-weight:650;letter-spacing:-.01em;flex:1;line-height:1.25}
+.extarget{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+.exbody{padding:0 16px 15px;border-top:1px solid var(--edge);margin-top:-1px}
+.opt{font-size:10px;letter-spacing:.1em;color:var(--muted);border:1px solid var(--edge);
+  border-radius:4px;padding:1px 5px;text-transform:uppercase;font-weight:700}
+
+.rirchip{display:inline-block;font-size:11px;letter-spacing:.07em;font-weight:700;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--edge);border-radius:5px;padding:3px 8px;margin-top:13px}
+.last{font-size:13px;color:var(--muted);padding:9px 0 0;line-height:1.5}
+.last b{color:var(--chalk);font-weight:600}
+.bump{display:flex;gap:9px;align-items:center;background:rgba(228,179,99,.09);
+  border:1px solid rgba(228,179,99,.32);border-radius:9px;padding:10px 12px;margin-top:11px;
+  font-size:13px;color:var(--load);font-weight:600;line-height:1.35}
+
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;text-align:left;padding-bottom:7px}
+th.n,td.n{text-align:center}
+td{padding:4px 0}
+input{background:var(--raise);border:1px solid var(--edge);border-radius:9px;color:var(--chalk);
+  font:inherit;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;
+  padding:11px 4px;width:100%;text-align:center;-moz-appearance:textfield}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input:focus{outline:none;border-color:var(--load)}
+.setno{font-size:13px;font-weight:700;color:var(--muted);width:26px}
+.tick{width:46px;height:46px;border-radius:10px;border:1px solid var(--edge);background:var(--raise);
+  color:var(--muted);font-size:19px;display:flex;align-items:center;justify-content:center;padding:0}
+.tick[data-on="1"]{background:var(--done);border-color:var(--done);color:#0F1A15}
+tr[data-on="1"] input{opacity:.5}
+
+/* rest bar */
+#rest{position:fixed;left:0;right:0;bottom:0;background:#11141799;backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);border-top:1px solid var(--edge);
+  padding:13px 16px calc(env(safe-area-inset-bottom) + 13px);display:none;z-index:20}
+#rest.on{display:block}
+#restfill{position:absolute;top:0;left:0;height:2px;background:var(--load);transition:width 1s linear}
+.restrow{display:flex;align-items:center;justify-content:space-between;max-width:640px;margin:0 auto}
+#restnum{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+#rest button{background:none;border:1px solid var(--edge);color:var(--chalk);font:inherit;
+  font-size:13px;font-weight:650;border-radius:8px;padding:9px 15px}
+
+.hist{display:flex;justify-content:space-between;align-items:center;padding:14px 0;
+  border-bottom:1px solid var(--edge);font-size:14px}
+.hist:last-child{border:0}
+.hd{width:26px;height:26px;border-radius:7px;background:var(--raise);color:var(--load);
+  font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;margin-right:11px}
+.empty{color:var(--muted);font-size:14px;text-align:center;padding:34px 12px;line-height:1.6}
+textarea{width:100%;height:130px;background:var(--raise);border:1px solid var(--edge);border-radius:10px;
+  color:var(--muted);font-family:ui-monospace,Menlo,monospace;font-size:11px;padding:11px;margin-top:10px}
+.note{font-size:13px;color:var(--muted);line-height:1.55;margin:12px 0 0}
+.bk{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--edge)}
+.bk:last-child{border:0}
+.bk button{background:var(--raise);border:1px solid var(--edge);color:var(--chalk);font:inherit;
+  font-size:12px;font-weight:650;border-radius:8px;padding:8px 12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="eyebrow">Full-body rotation</div>
+    <h1>Lift</h1>
+  </div>
+  <div class="tabs">
+    <button class="tab" data-tab="now" aria-selected="true">Train</button>
+    <button class="tab" data-tab="log" aria-selected="false">Log</button>
+  </div>
+</header>
+
+<main id="view"></main>
+
+<div id="rest">
+  <div id="restfill"></div>
+  <div class="restrow">
+    <div><div class="eyebrow">Rest</div><div id="restnum" class="num">0:00</div></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="addRest(30)">+30s</button>
+      <button onclick="stopRest()">Skip</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== YOUR PROGRAM =====
+   rest = seconds · inc = kg to add when you graduate the rep range   */
+const PROGRAM = {
+  A: { title:"Squat / Bench", ex:[
+    {id:"squat",   name:"Back Squat",                sets:3, lo:6,  hi:8,  rest:150, inc:5,   rir:"2–3"},
+    {id:"bench",   name:"Bench Press",               sets:3, lo:6,  hi:8,  rest:150, inc:2.5, rir:"2–3"},
+    {id:"csrow",   name:"Chest-Supported Row",       sets:3, lo:8,  hi:10, rest:120, inc:2.5, rir:"1–2"},
+    {id:"latrai",  name:"Lateral Raise",             sets:3, lo:10, hi:12, rest:75,  inc:2,   rir:"0–1"},
+    {id:"bicurl",  name:"EZ-Bar / Incline DB Curl",  sets:2, lo:8,  hi:12, rest:75,  inc:2.5, rir:"0–1"},
+    {id:"calf",    name:"Standing Calf Raise",       sets:2, lo:10, hi:15, rest:75,  inc:5,   rir:"0–1", optional:true},
+    {id:"abwheel", name:"Ab Wheel / Plank",          sets:2, lo:8,  hi:15, rest:60,  inc:0,   rir:"0–1", optional:true}
+  ]},
+  B: { title:"Hinge / Overhead", ex:[
+    {id:"rdl",     name:"Romanian Deadlift",         sets:3, lo:6,  hi:8,  rest:150, inc:5,   rir:"2–3"},
+    {id:"ohp",     name:"Overhead Press",            sets:3, lo:6,  hi:8,  rest:150, inc:2.5, rir:"2–3"},
+    {id:"pull",    name:"Lat Pulldown / Pull-up",    sets:3, lo:8,  hi:10, rest:120, inc:2.5, rir:"1–2"},
+    {id:"triext",  name:"Overhead Triceps Extension",sets:3, lo:8,  hi:12, rest:75,  inc:2.5, rir:"0–1"},
+    {id:"hamcurl", name:"Hammer Curl",               sets:2, lo:8,  hi:12, rest:75,  inc:2.5, rir:"0–1"},
+    {id:"facepull",name:"Face Pull",                 sets:2, lo:12, hi:20, rest:60,  inc:2.5, rir:"0–1", optional:true},
+    {id:"knee",    name:"Hanging Knee Raise",        sets:2, lo:10, hi:15, rest:60,  inc:0,   rir:"0–1", optional:true}
+  ]},
+  C: { title:"Upper-lead / Machine legs", ex:[
+    {id:"incdb",   name:"Incline DB Press",          sets:3, lo:6,  hi:8,  rest:150, inc:2.5, rir:"2–3"},
+    {id:"legpress",name:"Leg Press",                 sets:3, lo:8,  hi:10, rest:150, inc:5,   rir:"2–3"},
+    {id:"cabrow",  name:"Seated Cable Row",          sets:3, lo:8,  hi:10, rest:120, inc:2.5, rir:"1–2"},
+    {id:"backext", name:"45° Back Extension",        sets:3, lo:10, hi:15, rest:90,  inc:2.5, rir:"2–3"},
+    {id:"legcurl", name:"Seated Leg Curl",           sets:2, lo:8,  hi:12, rest:90,  inc:2.5, rir:"0–1"},
+    {id:"tripush", name:"Rope Triceps Pushdown",     sets:2, lo:10, hi:12, rest:75,  inc:2.5, rir:"0–1"},
+    {id:"latrai2", name:"Lateral Raise",             sets:2, lo:10, hi:12, rest:60,  inc:2,   rir:"0–1", optional:true}
+  ]}
+};
+const ORDER = ["A","B","C"];
+const KEY = "lift_v1";
+const BACKUP_PREFIX = "lift_v1_backup_";
+const BACKUP_COUNT = 5;
+
+/* ---------- storage ---------- */
+let S = {history:[], active:null};
+try { const r = localStorage.getItem(KEY); if (r) S = JSON.parse(r); } catch(e){}
+
+function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(S));
+    writeBackup();
+  }catch(e){ alert("Couldn't save. If you're in Private Browsing, switch it off."); }
+}
+
+/* rolling set of the last 5 saves, each under its own key */
+function writeBackup(){
+  try{
+    for(let i=BACKUP_COUNT-1;i>0;i--){
+      const prev = localStorage.getItem(BACKUP_PREFIX+(i-1));
+      if(prev) localStorage.setItem(BACKUP_PREFIX+i, prev);
+      else localStorage.removeItem(BACKUP_PREFIX+i);
+    }
+    localStorage.setItem(BACKUP_PREFIX+"0", JSON.stringify({date:new Date().toISOString(), state:S}));
+  }catch(e){}
+}
+function getBackups(){
+  const out=[];
+  for(let i=0;i<BACKUP_COUNT;i++){
+    try{ const raw = localStorage.getItem(BACKUP_PREFIX+i); if(raw) out.push(JSON.parse(raw)); }catch(e){}
+  }
+  return out;
+}
+function restoreBackup(i){
+  const b = getBackups()[i];
+  if(!b) return;
+  if(!confirm(`Restore the backup from ${fmtDate(b.date)}? This replaces your current data.`)) return;
+  S = b.state;
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+  stopRest(); render();
+}
+function downloadBackup(){
+  const blob = new Blob([JSON.stringify(S, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `lift-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+/* ---------- program helpers ---------- */
+function nextDay(){
+  if(!S.history.length) return "A";
+  const i = ORDER.indexOf(S.history[S.history.length-1].day);
+  return ORDER[(i+1) % 3];
+}
+function planFor(day, mode){
+  let list = PROGRAM[day].ex.filter(e => mode==="short" ? !e.optional : true);
+  if(mode==="short") list = list.slice(0,-1).map(e => ({...e, sets:Math.min(e.sets,2)}));
+  return list;
+}
+function lastTime(exId){
+  for(let i=S.history.length-1;i>=0;i--){
+    const s = S.history[i].entries[exId];
+    if(s && s.length) return {date:S.history[i].date, sets:s};
+  }
+  return null;
+}
+// double progression: every logged set at the top of the range -> add weight
+function cue(ex){
+  const L = lastTime(ex.id);
+  if(!L) return {weight:"", graduated:false, last:null};
+  const top = L.sets.length >= 2 && L.sets.every(s => s.r >= ex.hi);
+  const w = Math.max(...L.sets.map(s => s.w));
+  return {weight: top ? +(w + ex.inc).toFixed(1) : w, graduated: top, last:L};
+}
+const fmtDate = d => new Date(d).toLocaleDateString(undefined,{day:"numeric",month:"short"});
+const fmtDateTime = d => new Date(d).toLocaleDateString(undefined,{day:"numeric",month:"short"}) + " " +
+  new Date(d).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+
+/* ---------- rest timer ---------- */
+let restT=null, restLeft=0, restTotal=0;
+function startRest(sec){
+  restLeft=sec; restTotal=sec;
+  document.getElementById("rest").classList.add("on");
+  clearInterval(restT); paintRest();
+  restT=setInterval(()=>{ restLeft--; paintRest(); if(restLeft<=0) doneRest(); },1000);
+}
+function paintRest(){
+  const m=Math.floor(Math.max(restLeft,0)/60), s=Math.max(restLeft,0)%60;
+  document.getElementById("restnum").textContent = m+":"+String(s).padStart(2,"0");
+  document.getElementById("restfill").style.width = (100 - restLeft/restTotal*100) + "%";
+}
+function doneRest(){
+  clearInterval(restT);
+  if(navigator.vibrate) navigator.vibrate([220,90,220]);
+  document.getElementById("restnum").textContent="Go";
+  setTimeout(stopRest, 2600);
+}
+function stopRest(){ clearInterval(restT); document.getElementById("rest").classList.remove("on"); }
+function addRest(n){ restLeft+=n; restTotal+=n; paintRest(); }
+
+/* ---------- actions ---------- */
+function begin(mode){
+  const day = nextDay();
+  S.active = {day, mode, startedAt:new Date().toISOString(), entries:{}, open:planFor(day,mode)[0].id};
+  save(); render();
+}
+function toggle(id){ S.active.open = S.active.open===id ? null : id; save(); render(); }
+
+function mark(exId, i, sets, rest){
+  const row = document.querySelector(`tr[data-ex="${exId}"][data-i="${i}"]`);
+  const w = parseFloat(row.querySelector(".w").value);
+  const r = parseInt(row.querySelector(".r").value, 10);
+  if(isNaN(w) || isNaN(r)){ alert("Enter a weight and reps first."); return; }
+  const e = S.active.entries;
+  if(!e[exId]) e[exId] = [];
+  e[exId][i] = {w, r};
+  save();
+  const filled = e[exId].filter(Boolean).length;
+  render();
+  if(filled < sets) startRest(rest); else stopRest();
+}
+function unmark(exId, i){ if(S.active.entries[exId]) delete S.active.entries[exId][i]; save(); render(); }
+
+function finish(){
+  const e = S.active.entries;
+  Object.keys(e).forEach(k => { e[k] = e[k].filter(Boolean); if(!e[k].length) delete e[k]; });
+  if(!Object.keys(e).length){ if(!confirm("Nothing logged. Discard this session?")) return; S.active=null; save(); render(); return; }
+  S.history.push({date:S.active.startedAt, day:S.active.day, mode:S.active.mode, entries:e});
+  S.active = null; save(); stopRest(); render();
+  window.scrollTo(0,0);
+}
+function scrap(){ if(confirm("Discard this session? Nothing will be saved.")){ S.active=null; save(); stopRest(); render(); } }
+
+/* ---------- views ---------- */
+let tab = "now";
+document.querySelectorAll(".tab").forEach(b => b.onclick = () => {
+  tab = b.dataset.tab;
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x===b));
+  render();
+});
+
+function render(){ document.getElementById("view").innerHTML = tab==="log" ? logView() : (S.active ? sessionView() : homeView()); }
+
+function homeView(){
+  const d = nextDay(), n = S.history.length;
+  return `
+  <div class="card lead">
+    <div class="eyebrow">Next up</div>
+    <div class="bigday">Day ${d}</div>
+    <div class="daysub">${PROGRAM[d].title} · ${planFor(d,"full").length} exercises</div>
+    <button class="act" onclick="begin('full')">Start Day ${d}</button>
+    <div class="row2"><button class="act ghost" onclick="begin('short')">Short on time (~35 min)</button></div>
+  </div>
+  <div class="card">
+    <div class="eyebrow">Recent</div>
+    ${n ? S.history.slice(-6).reverse().map(h=>`
+      <div class="hist">
+        <span><span class="hd">${h.day}</span>${fmtDate(h.date)}</span>
+        <span style="color:var(--muted)" class="num">${Object.values(h.entries).flat().length} sets${h.mode==="short"?" · short":""}</span>
+      </div>`).join("")
+      : `<div class="empty">No sessions yet.<br>Start Day A whenever you're ready.</div>`}
+  </div>`;
+}
+
+function sessionView(){
+  const {day, mode, entries, open} = S.active;
+  const list = planFor(day, mode);
+  const total = list.reduce((a,e)=>a+e.sets,0);
+  const done = Object.values(entries).flat().filter(Boolean).length;
+
+  return `
+  <div class="card lead" style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div class="eyebrow">In progress${mode==="short"?" · short":""}</div>
+      <div style="font-size:21px;font-weight:700;letter-spacing:-.02em;margin-top:3px">Day ${day} · ${PROGRAM[day].title}</div>
+    </div>
+    <div style="text-align:right"><div class="num" style="font-size:26px;font-weight:800;color:var(--load)">${done}<span style="color:var(--muted);font-size:15px">/${total}</span></div><div class="eyebrow">sets</div></div>
+  </div>
+
+  ${list.map((ex,idx)=>{
+    const c = cue(ex);
+    const got = (entries[ex.id]||[]).filter(Boolean).length;
+    const isOpen = open===ex.id;
+    return `
+    <div class="ex ${isOpen?"open":""} ${got>=ex.sets?"complete":""}">
+      <div class="exhead" onclick="toggle('${ex.id}')">
+        <span class="exidx num">${idx+1}</span>
+        <span class="exname">${ex.name} ${ex.optional?'<span class="opt">optional</span>':""}</span>
+        <span class="extarget num">${got>=ex.sets?"✓ ":""}${got}/${ex.sets} × ${ex.lo}–${ex.hi}</span>
+      </div>
+      ${isOpen?`<div class="exbody">
+        <div class="rirchip">Leave ${ex.rir} in the tank</div>
+        <div class="last">${c.last
+          ? `<b>${fmtDate(c.last.date)}</b> · ${c.last.sets.map(s=>`${s.w}kg × ${s.r}`).join("  ·  ")}`
+          : `First time logging this. Pick a weight you could do ${ex.hi+2} reps with, then stop at ${ex.hi}.`}</div>
+        ${c.graduated?`<div class="bump">↑ Every set hit ${ex.hi} last time. Go up ${ex.inc}kg to ${c.weight}kg.</div>`:""}
+        <table>
+          <tr><th style="width:26px"></th><th class="n">Weight</th><th class="n">Reps</th><th style="width:46px"></th></tr>
+          ${Array.from({length:ex.sets},(_,i)=>{
+            const rec = (entries[ex.id]||[])[i];
+            const on = rec?1:0;
+            const pw = rec ? rec.w : (c.weight!=="" ? c.weight : "");
+            const pr = rec ? rec.r : (c.last && c.last.sets[i] ? c.last.sets[i].r : ex.lo);
+            return `<tr data-ex="${ex.id}" data-i="${i}" data-on="${on}">
+              <td class="setno num">${i+1}</td>
+              <td><input class="w num" inputmode="decimal" value="${pw}" placeholder="kg"></td>
+              <td><input class="r num" inputmode="numeric" value="${pr}" placeholder="${ex.lo}"></td>
+              <td><button class="tick" data-on="${on}" onclick="${on?`unmark('${ex.id}',${i})`:`mark('${ex.id}',${i},${ex.sets},${ex.rest})`}">✓</button></td>
+            </tr>`;
+          }).join("")}
+        </table>
+      </div>`:""}
+    </div>`;
+  }).join("")}
+
+  <button class="act" style="margin-top:16px" onclick="finish()">Finish &amp; save</button>
+  <div class="row2"><button class="act ghost" onclick="scrap()">Discard</button></div>`;
+}
+
+function logView(){
+  const backups = getBackups();
+  return `
+  <div class="card">
+    <div class="eyebrow">History</div>
+    ${S.history.length ? S.history.slice().reverse().map(h=>`
+      <div style="padding:15px 0;border-bottom:1px solid var(--edge)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+          <span><span class="hd">${h.day}</span><b>${fmtDate(h.date)}</b></span>
+          <span class="eyebrow">${h.mode==="short"?"short":"full"}</span>
+        </div>
+        ${Object.entries(h.entries).map(([id,sets])=>{
+          const ex = PROGRAM[h.day].ex.find(e=>e.id===id);
+          return `<div style="font-size:13px;color:var(--muted);padding:2px 0 2px 37px">
+            ${ex?ex.name:id} — <span class="num" style="color:var(--chalk)">${sets.map(s=>`${s.w}×${s.r}`).join(", ")}</span></div>`;
+        }).join("")}
+      </div>`).join("") : `<div class="empty">Nothing logged yet.</div>`}
+  </div>
+  <div class="card">
+    <div class="eyebrow">Backup</div>
+    <p class="note">Everything lives on this phone only. The app keeps the last ${BACKUP_COUNT} auto-backups below, and you can download a copy to keep in iCloud Drive.</p>
+    <div class="row2">
+      <button class="act ghost" onclick="downloadBackup()">Download backup file</button>
+    </div>
+    <div style="margin-top:14px">
+      ${backups.length ? backups.map((b,i)=>`
+        <div class="bk">
+          <span class="num">${fmtDateTime(b.date)}</span>
+          <button onclick="restoreBackup(${i})">Restore</button>
+        </div>`).join("") : `<div class="empty">No auto-backups yet — they're created the first time you save a session.</div>`}
+    </div>
+    <textarea readonly onclick="this.select()">${JSON.stringify(S)}</textarea>
+    <div class="row2">
+      <button class="act ghost" onclick="restore()">Restore from pasted text</button>
+    </div>
+  </div>`;
+}
+function restore(){
+  const t = prompt("Paste a backup:");
+  if(!t) return;
+  try { const p = JSON.parse(t); if(!p.history) throw 0; S = p; save(); render(); }
+  catch(e){ alert("That didn't look like a valid backup."); }
+}
+
+render();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    try{
+      navigator.serviceWorker.register("./sw.js").catch(()=>{});
+    }catch(e){}
+  });
+}
+</script>
+</body>
+</html>
