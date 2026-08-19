@@ -252,27 +252,61 @@ const fmtDate = d => new Date(d).toLocaleDateString(undefined,{day:"numeric",mon
 const fmtDateTime = d => new Date(d).toLocaleDateString(undefined,{day:"numeric",month:"short"}) + " " +
   new Date(d).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
 
-/* ---------- rest timer ---------- */
-let restT=null, restLeft=0, restTotal=0;
+/* ---------- rest timer ----------
+   Timed off a real end-of-rest clock timestamp (not a decrementing counter),
+   so it stays accurate across backgrounding/throttling and survives a reload. */
+const REST_KEY = "lift_rest_end";
+let restT=null, restEnd=0, restTotal=0, restDoneFired=false;
+
 function startRest(sec){
-  restLeft=sec; restTotal=sec;
+  restEnd = Date.now() + sec*1000;
+  restTotal = sec;
+  restDoneFired = false;
+  try{ localStorage.setItem(REST_KEY, JSON.stringify({end:restEnd, total:restTotal})); }catch(e){}
   document.getElementById("rest").classList.add("on");
   clearInterval(restT); paintRest();
-  restT=setInterval(()=>{ restLeft--; paintRest(); if(restLeft<=0) doneRest(); },1000);
+  restT=setInterval(paintRest, 1000);
 }
 function paintRest(){
-  const m=Math.floor(Math.max(restLeft,0)/60), s=Math.max(restLeft,0)%60;
-  document.getElementById("restnum").textContent = m+":"+String(s).padStart(2,"0");
-  document.getElementById("restfill").style.width = (100 - restLeft/restTotal*100) + "%";
+  const remaining = Math.round((restEnd - Date.now())/1000);
+  if(remaining > 0){
+    const m=Math.floor(remaining/60), s=remaining%60;
+    document.getElementById("restnum").textContent = m+":"+String(s).padStart(2,"0");
+    document.getElementById("restfill").style.width = (100 - remaining/restTotal*100) + "%";
+  } else {
+    document.getElementById("restfill").style.width = "100%";
+    if(!restDoneFired) doneRest(remaining);
+  }
 }
-function doneRest(){
+function doneRest(remaining){
+  restDoneFired = true;
   clearInterval(restT);
-  if(navigator.vibrate) navigator.vibrate([220,90,220]);
+  // don't buzz on a big backlog - only if we're catching up within a few seconds of on-time
+  if(navigator.vibrate && remaining > -5) navigator.vibrate([220,90,220]);
   document.getElementById("restnum").textContent="Go";
   setTimeout(stopRest, 2600);
 }
-function stopRest(){ clearInterval(restT); document.getElementById("rest").classList.remove("on"); }
-function addRest(n){ restLeft+=n; restTotal+=n; paintRest(); }
+function stopRest(){
+  clearInterval(restT);
+  document.getElementById("rest").classList.remove("on");
+  try{ localStorage.removeItem(REST_KEY); }catch(e){}
+}
+function addRest(n){ restEnd+=n*1000; restTotal+=n; paintRest(); }
+function resumeRest(){
+  try{
+    const raw = localStorage.getItem(REST_KEY);
+    if(!raw) return;
+    const {end, total} = JSON.parse(raw);
+    if(!end || !total) return;
+    restEnd = end; restTotal = total; restDoneFired = false;
+    document.getElementById("rest").classList.add("on");
+    clearInterval(restT); paintRest();
+    restT=setInterval(paintRest, 1000);
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", () => {
+  if(!document.hidden && document.getElementById("rest").classList.contains("on")) paintRest();
+});
 
 /* ---------- actions ---------- */
 function begin(mode){
@@ -438,6 +472,7 @@ function restore(){
 }
 
 render();
+resumeRest();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", () => {
